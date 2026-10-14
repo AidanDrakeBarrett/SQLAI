@@ -1,0 +1,55 @@
+{
+  "strategy": "zero_shot",
+  "prompt_prefix": "create table users (\n\tuser_id integer primary key autoincrement,\n\tusername varchar(30) not null unique\n);\n\ncreate table games (\n\tgame_id integer primary key autoincrement,\n\tgame_name varchar(30),\n\tprice decimal(5, 2)\n);\n\ncreate table tags (\n\ttag varchar(20) primary key\n);\n\ncreate table friends (\n\tfriend_id_one integer not null,\n\tfriend_id_two integer not null,\n\tprimary key (friend_id_one, friend_id_two),\n\tforeign key (friend_id_one) references users(user_id) on delete cascade,\n\tforeign key (friend_id_two) references users(user_id) on delete cascade\n);\n\ncreate table system_requirements (\n\tgame_id integer primary key,\n\tcpu varchar(30) not null,\n\tgpu varchar(30) not null,\n\tstorage varchar(10) not null,\n\tmemory varchar(10) not null,\n\toperating_system varchar(30) not null,\n\tforeign key (game_id) references games(game_id) on delete cascade\n);\n\ncreate table reviews (\n\tgame_id integer not null,\n\treview varchar(512) not null,\n\tprimary key (game_id, review),\n\tforeign key (game_id) references games(game_id) on delete cascade\n);\n\ncreate table game_tags (\n\tgame_id integer not null,\n\ttag varchar(20) not null,\n\tprimary key (game_id, tag),\n\tforeign key (game_id) references games(game_id) on delete cascade,\n\tforeign key (tag) references tags(tag) on delete cascade\n);\n\ncreate table user_library (\n\tuser_id integer not null,\n\tgame_id integer not null,\n\thours_played decimal(8, 2),\n\tprimary key (user_id, game_id),\n\tforeign key (user_id) references users(user_id) on delete cascade,\n\tforeign key (game_id) references games(game_id) on delete cascade\n); Give me a sqlite select statement that answers the question. Only respond with sqlite syntax. If there is an error do not explain it!",
+  "questionResults": [
+    {
+      "question": "Who is friends with courrierr666?",
+      "sql": "SELECT DISTINCT friend.username\nFROM users AS target\nJOIN friends AS f\n  ON f.friend_id_one = target.user_id OR f.friend_id_two = target.user_id\nJOIN users AS friend\n  ON friend.user_id = CASE\n    WHEN f.friend_id_one = target.user_id THEN f.friend_id_two\n    ELSE f.friend_id_one\n  END\nWHERE target.username = 'courrierr666';",
+      "queryRawResponse": "[('xXdraGvn5layer420Xx',), ('greatchain',)]",
+      "friendlyResponse": "xXdraGvn5layer420Xx and greatchain are friends with courrierr666.",
+      "error": "None"
+    },
+    {
+      "question": "Who owns Neuroshock?",
+      "sql": "SELECT u.username\nFROM users AS u\nJOIN user_library AS ul ON ul.user_id = u.user_id\nJOIN games AS g ON g.game_id = ul.game_id\nWHERE g.game_name = 'Neuroshock';",
+      "queryRawResponse": "[('courrierr666',), ('greatchain',), ('godFromMachine',), ('HackerGoggles',)]",
+      "friendlyResponse": "Neuroshock is owned by courrierr666, greatchain, godFromMachine, and HackerGoggles.",
+      "error": "None"
+    },
+    {
+      "question": "How many total hours have people played Halved Vitality?",
+      "sql": "SELECT COALESCE(SUM(ul.hours_played), 0)\nFROM user_library AS ul\nJOIN games AS g ON g.game_id = ul.game_id\nWHERE g.game_name = 'Halved Vitality';",
+      "queryRawResponse": "[(152.47,)]",
+      "friendlyResponse": "People have played Halved Vitality for a total of 152.47 hours.",
+      "error": "None"
+    },
+    {
+      "question": "What is the most popular game by total hours played?",
+      "sql": "SELECT g.game_name, SUM(ul.hours_played) AS total_hours_played\nFROM games AS g\nJOIN user_library AS ul ON ul.game_id = g.game_id\nGROUP BY g.game_id, g.game_name\nORDER BY total_hours_played DESC\nLIMIT 1;",
+      "queryRawResponse": "[('Rise In: a Pre-Nuclear RPG', 228.51000000000002)]",
+      "friendlyResponse": "The most popular game by total hours played is *Rise In: a Pre-Nuclear RPG*, with 228.51 hours played.",
+      "error": "None"
+    },
+    {
+      "question": "Which game, or games if there is a tie, have people bought the most?",
+      "sql": "WITH game_counts AS (\n    SELECT game_id, COUNT(*) AS buyer_count\n    FROM user_library\n    GROUP BY game_id\n)\nSELECT g.game_name\nFROM games AS g\nJOIN game_counts AS gc ON gc.game_id = g.game_id\nWHERE gc.buyer_count = (SELECT MAX(buyer_count) FROM game_counts);",
+      "queryRawResponse": "[('Rise In: a Pre-Nuclear RPG',)]",
+      "friendlyResponse": "Rise In: a Pre-Nuclear RPG is the game that people have bought the most.",
+      "error": "None"
+    },
+    {
+      "question": "What are the reviews and names of games tagged with 'Horror'?",
+      "sql": "SELECT g.game_name, r.review\nFROM games AS g\nJOIN reviews AS r ON r.game_id = g.game_id\nJOIN game_tags AS gt ON gt.game_id = g.game_id\nWHERE gt.tag = 'Horror';",
+      "queryRawResponse": "[('Rise In: a Pre-Nuclear RPG', \"Absolute classic in the sci-fi RPG genre. I love the whacky anti-capitalist paranoia and dark humor and when my choices change the game's story.\"), ('Halved Vitality', \"Such a good story. Honestly, we owe so much to Switch for inventing the modern FPS game. I can't believe we used to play games where the gameplay had no connection to the story \\nand you had to read the manual to get any of the story at all.\"), ('Network Zap', \"I never thought the day would come that my favorite game would be a 'dad' game. Like, this is the kind of game your dad played and you could never figure how he knew what to do. It doesn't \\nhold your hand, but the plot does such an amazing job of slowly building this living world and keeping you on the edge of your seat.\"), ('Inhabitant Malicious', 'The static camera angles are pretty difficult with a keyboard and mouse, but when I plugged in my old YTIN controller, gameplay was much smoother with the joysticks. 9/10.')]",
+      "friendlyResponse": "The Horror-tagged games and their reviews are: **Rise In: a Pre-Nuclear RPG** \u2014 \u201cAbsolute classic in the sci-fi RPG genre. I love the whacky anti-capitalist paranoia and dark humor and when my choices change the game's story\u201d; **Halved Vitality** \u2014 \u201cSuch a good story. Honestly, we owe so much to Switch for inventing the modern FPS game. I can't believe we used to play games where the gameplay had no connection to the story and you had to read the manual to get any of the story at all\u201d; **Network Zap** \u2014 \u201cI never thought the day would come that my favorite game would be a 'dad' game. Like, this is the kind of game your dad played and you could never figure how he knew what to do. It doesn't hold your hand, but the plot does such an amazing job of slowly building this living world and keeping you on the edge of your seat\u201d; and **Inhabitant Malicious** \u2014 \u201cThe static camera angles are pretty difficult with a keyboard and mouse, but when I plugged in my old YTIN controller, gameplay was much smoother with the joysticks. 9/10.\u201d",
+      "error": "None"
+    },
+    {
+      "question": "What games are owned by courrierr666 and both of his friends?",
+      "sql": "WITH target AS (\n    SELECT user_id\n    FROM users\n    WHERE username = 'courrierr666'\n),\nfriend_ids AS (\n    SELECT DISTINCT\n           CASE\n               WHEN f.friend_id_one = t.user_id THEN f.friend_id_two\n               ELSE f.friend_id_one\n           END AS friend_id\n    FROM friends AS f\n    JOIN target AS t\n      ON f.friend_id_one = t.user_id\n      OR f.friend_id_two = t.user_id\n)\nSELECT g.game_name\nFROM target AS t\nJOIN user_library AS own\n  ON own.user_id = t.user_id\nJOIN games AS g\n  ON g.game_id = own.game_id\nJOIN friend_ids AS f\nJOIN user_library AS friends_library\n  ON friends_library.user_id = f.friend_id\n AND friends_library.game_id = g.game_id\nGROUP BY g.game_id, g.game_name\nHAVING COUNT(DISTINCT f.friend_id) = 2;",
+      "queryRawResponse": "[]",
+      "friendlyResponse": "No games were found that are owned by courrierr666 and both of his friends.",
+      "error": "None"
+    }
+  ]
+}
